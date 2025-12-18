@@ -101,3 +101,42 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+## user_problem_statement: TikTok Auditorium (mobile MVP) — Phase 0-1 backend foundation (health, orgs/projects CRUD, manual import)
+## backend:
+##   - task: "Phase 0-1: Core API (health, orgs, projects, manual imports)"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/backend/server.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Implemented /api/health, /api/orgs (create/list), /api/projects (create/list/get), /api/imports/manual with optional csv_base64 parsing. Needs curl-based verification."
+## frontend:
+##   - task: "Phase 0-1: App shell (tabs + projects UI + i18n)"
+##     implemented: false
+##     working: "NA"
+##     file: "/app/frontend/app/*"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: false
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Not implemented yet."
+## metadata:
+##   created_by: "main_agent"
+##   version: "1.0"
+##   test_sequence: 1
+##   run_ui: false
+## test_plan:
+##   current_focus:
+##     - "Phase 0-1: Core API (health, orgs, projects, manual imports)"
+##   stuck_tasks: []
+##   test_all: false
+##   test_priority: "high_first"
+## agent_communication:
+##   - agent: "main"
+##     message: "Please test backend endpoints via curl: /api/health, create/list org, create/list/get project, manual import with items and csv_base64. Ensure ObjectId handling and CSV parsing errors are clear."
