@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend API Testing Suite for TikTok Auditorium
-Tests Phase 0-1 + Module A: Audience Avatar CRUD endpoints
+Tests Phase 0-1 + Module A: Audience Avatar CRUD endpoints + Module B: Competitors + Module C: Creators
 """
 
 import base64
