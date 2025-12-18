@@ -25,6 +25,7 @@
     "date-fns": "^4.1.0",
     "expo": "^54.0.30",
     "expo-blur": "~14.1.5",
+    "expo-clipboard": "^8.0.8",
     "expo-constants": "~18.0.12",
     "expo-font": "~14.0.10",
     "expo-haptics": "~14.1.4",
