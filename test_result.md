@@ -139,7 +139,7 @@
 ##   run_ui: false
 ## test_plan:
 ##   current_focus:
-##     - "Phase 0-1: Core API (health, orgs, projects, manual imports)"
+##     - "Phase 0-1: App shell (tabs + projects UI + i18n)"
 ##   stuck_tasks: []
 ##   test_all: false
 ##   test_priority: "high_first"
