@@ -92,6 +92,36 @@ class ManualImportOut(BaseModel):
     created_at: datetime
 
 
+# ─── Audience Avatar Models ───────────────────────────────────────────────────
+class AudienceAvatarCreate(BaseModel):
+    project_id: str
+    name: str = Field(min_length=2, max_length=120)
+    hashtags: list[str] = Field(min_length=1, description="At least one hashtag required")
+    geolocation: str = Field(min_length=2, max_length=100, description="Country or region")
+    language: str = Field(default="ru", max_length=10)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class AudienceAvatarUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    hashtags: list[str] | None = None
+    geolocation: str | None = Field(default=None, min_length=2, max_length=100)
+    language: str | None = Field(default=None, max_length=10)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class AudienceAvatarOut(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    hashtags: list[str]
+    geolocation: str
+    language: str
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 @api_router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     mongo_ok = False
