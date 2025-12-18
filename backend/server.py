@@ -841,6 +841,376 @@ async def get_subscription(org_id: str = Query(...)) -> SubscriptionOut | dict[s
     )
 
 
+# ─── Module B: Competitor Models ──────────────────────────────────────────────
+class CompetitorCreate(BaseModel):
+    project_id: str
+    name: str = Field(min_length=2, max_length=120)
+    tiktok_url: str = Field(min_length=5, max_length=300)
+    notes: str | None = None
+
+
+class CompetitorUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    tiktok_url: str | None = Field(default=None, min_length=5, max_length=300)
+    notes: str | None = None
+
+
+class CompetitorOut(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    tiktok_url: str
+    notes: str | None
+    # Placeholder metrics (will be populated when TikTok API is connected)
+    followers: int | None = None
+    avg_views: int | None = None
+    avg_likes: int | None = None
+    engagement_rate: float | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+# ─── Module C: Creator/Blogger Models ─────────────────────────────────────────
+class CreatorCreate(BaseModel):
+    project_id: str
+    name: str = Field(min_length=2, max_length=120)
+    tiktok_url: str = Field(min_length=5, max_length=300)
+    category: str = Field(default="general", max_length=50)
+    notes: str | None = None
+
+
+class CreatorUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    tiktok_url: str | None = Field(default=None, min_length=5, max_length=300)
+    category: str | None = Field(default=None, max_length=50)
+    notes: str | None = None
+
+
+class CreatorOut(BaseModel):
+    id: str
+    project_id: str
+    name: str
+    tiktok_url: str
+    category: str
+    notes: str | None
+    # Placeholder metrics
+    followers: int | None = None
+    avg_views: int | None = None
+    engagement_rate: float | None = None
+    audience_match_score: float | None = None  # 0-100 score matching target audience
+    created_at: datetime
+    updated_at: datetime
+
+
+# ─── Module B: Competitor Endpoints ───────────────────────────────────────────
+@api_router.post("/competitors", response_model=CompetitorOut)
+async def create_competitor(payload: CompetitorCreate) -> CompetitorOut:
+    """Add a competitor to track."""
+    try:
+        pid = ObjectId(payload.project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    project = await db.projects.find_one({"_id": pid})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = datetime.utcnow()
+    doc = {
+        "project_id": pid,
+        "name": payload.name.strip(),
+        "tiktok_url": payload.tiktok_url.strip(),
+        "notes": payload.notes.strip() if payload.notes else None,
+        "followers": None,
+        "avg_views": None,
+        "avg_likes": None,
+        "engagement_rate": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    res = await db.competitors.insert_one(doc)
+
+    return CompetitorOut(
+        id=oid_str(res.inserted_id),
+        project_id=payload.project_id,
+        **{k: v for k, v in doc.items() if k not in ("_id", "project_id")},
+    )
+
+
+@api_router.get("/competitors", response_model=list[CompetitorOut])
+async def list_competitors(project_id: str = Query(...)) -> list[CompetitorOut]:
+    """List all competitors for a project."""
+    try:
+        pid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    docs = await db.competitors.find({"project_id": pid}).sort("created_at", -1).to_list(100)
+    return [
+        CompetitorOut(
+            id=oid_str(d["_id"]),
+            project_id=oid_str(d["project_id"]),
+            name=d["name"],
+            tiktok_url=d["tiktok_url"],
+            notes=d.get("notes"),
+            followers=d.get("followers"),
+            avg_views=d.get("avg_views"),
+            avg_likes=d.get("avg_likes"),
+            engagement_rate=d.get("engagement_rate"),
+            created_at=d["created_at"],
+            updated_at=d.get("updated_at", d["created_at"]),
+        )
+        for d in docs
+    ]
+
+
+@api_router.get("/competitors/{competitor_id}", response_model=CompetitorOut)
+async def get_competitor(competitor_id: str) -> CompetitorOut:
+    """Get a specific competitor."""
+    try:
+        cid = ObjectId(competitor_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid competitor_id")
+
+    d = await db.competitors.find_one({"_id": cid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Competitor not found")
+
+    return CompetitorOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        tiktok_url=d["tiktok_url"],
+        notes=d.get("notes"),
+        followers=d.get("followers"),
+        avg_views=d.get("avg_views"),
+        avg_likes=d.get("avg_likes"),
+        engagement_rate=d.get("engagement_rate"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.patch("/competitors/{competitor_id}", response_model=CompetitorOut)
+async def update_competitor(competitor_id: str, payload: CompetitorUpdate) -> CompetitorOut:
+    """Update a competitor."""
+    try:
+        cid = ObjectId(competitor_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid competitor_id")
+
+    d = await db.competitors.find_one({"_id": cid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Competitor not found")
+
+    update_data: dict[str, Any] = {"updated_at": datetime.utcnow()}
+    if payload.name is not None:
+        update_data["name"] = payload.name.strip()
+    if payload.tiktok_url is not None:
+        update_data["tiktok_url"] = payload.tiktok_url.strip()
+    if payload.notes is not None:
+        update_data["notes"] = payload.notes.strip() if payload.notes else None
+
+    await db.competitors.update_one({"_id": cid}, {"$set": update_data})
+    d = await db.competitors.find_one({"_id": cid})
+
+    return CompetitorOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        tiktok_url=d["tiktok_url"],
+        notes=d.get("notes"),
+        followers=d.get("followers"),
+        avg_views=d.get("avg_views"),
+        avg_likes=d.get("avg_likes"),
+        engagement_rate=d.get("engagement_rate"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.delete("/competitors/{competitor_id}")
+async def delete_competitor(competitor_id: str) -> dict[str, str]:
+    """Delete a competitor."""
+    try:
+        cid = ObjectId(competitor_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid competitor_id")
+
+    result = await db.competitors.delete_one({"_id": cid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Competitor not found")
+
+    return {"status": "deleted", "id": competitor_id}
+
+
+# ─── Module C: Creator/Blogger Endpoints ──────────────────────────────────────
+@api_router.post("/creators", response_model=CreatorOut)
+async def create_creator(payload: CreatorCreate) -> CreatorOut:
+    """Add a creator/blogger to track."""
+    try:
+        pid = ObjectId(payload.project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    project = await db.projects.find_one({"_id": pid})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = datetime.utcnow()
+    doc = {
+        "project_id": pid,
+        "name": payload.name.strip(),
+        "tiktok_url": payload.tiktok_url.strip(),
+        "category": payload.category.strip(),
+        "notes": payload.notes.strip() if payload.notes else None,
+        "followers": None,
+        "avg_views": None,
+        "engagement_rate": None,
+        "audience_match_score": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    res = await db.creators.insert_one(doc)
+
+    return CreatorOut(
+        id=oid_str(res.inserted_id),
+        project_id=payload.project_id,
+        **{k: v for k, v in doc.items() if k not in ("_id", "project_id")},
+    )
+
+
+@api_router.get("/creators", response_model=list[CreatorOut])
+async def list_creators(
+    project_id: str = Query(...),
+    category: str | None = Query(default=None),
+) -> list[CreatorOut]:
+    """List all creators for a project, optionally filtered by category."""
+    try:
+        pid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    query: dict[str, Any] = {"project_id": pid}
+    if category:
+        query["category"] = category
+
+    docs = await db.creators.find(query).sort("created_at", -1).to_list(100)
+    return [
+        CreatorOut(
+            id=oid_str(d["_id"]),
+            project_id=oid_str(d["project_id"]),
+            name=d["name"],
+            tiktok_url=d["tiktok_url"],
+            category=d.get("category", "general"),
+            notes=d.get("notes"),
+            followers=d.get("followers"),
+            avg_views=d.get("avg_views"),
+            engagement_rate=d.get("engagement_rate"),
+            audience_match_score=d.get("audience_match_score"),
+            created_at=d["created_at"],
+            updated_at=d.get("updated_at", d["created_at"]),
+        )
+        for d in docs
+    ]
+
+
+@api_router.get("/creators/{creator_id}", response_model=CreatorOut)
+async def get_creator(creator_id: str) -> CreatorOut:
+    """Get a specific creator."""
+    try:
+        cid = ObjectId(creator_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid creator_id")
+
+    d = await db.creators.find_one({"_id": cid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Creator not found")
+
+    return CreatorOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        tiktok_url=d["tiktok_url"],
+        category=d.get("category", "general"),
+        notes=d.get("notes"),
+        followers=d.get("followers"),
+        avg_views=d.get("avg_views"),
+        engagement_rate=d.get("engagement_rate"),
+        audience_match_score=d.get("audience_match_score"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.patch("/creators/{creator_id}", response_model=CreatorOut)
+async def update_creator(creator_id: str, payload: CreatorUpdate) -> CreatorOut:
+    """Update a creator."""
+    try:
+        cid = ObjectId(creator_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid creator_id")
+
+    d = await db.creators.find_one({"_id": cid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Creator not found")
+
+    update_data: dict[str, Any] = {"updated_at": datetime.utcnow()}
+    if payload.name is not None:
+        update_data["name"] = payload.name.strip()
+    if payload.tiktok_url is not None:
+        update_data["tiktok_url"] = payload.tiktok_url.strip()
+    if payload.category is not None:
+        update_data["category"] = payload.category.strip()
+    if payload.notes is not None:
+        update_data["notes"] = payload.notes.strip() if payload.notes else None
+
+    await db.creators.update_one({"_id": cid}, {"$set": update_data})
+    d = await db.creators.find_one({"_id": cid})
+
+    return CreatorOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        tiktok_url=d["tiktok_url"],
+        category=d.get("category", "general"),
+        notes=d.get("notes"),
+        followers=d.get("followers"),
+        avg_views=d.get("avg_views"),
+        engagement_rate=d.get("engagement_rate"),
+        audience_match_score=d.get("audience_match_score"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.delete("/creators/{creator_id}")
+async def delete_creator(creator_id: str) -> dict[str, str]:
+    """Delete a creator."""
+    try:
+        cid = ObjectId(creator_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid creator_id")
+
+    result = await db.creators.delete_one({"_id": cid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Creator not found")
+
+    return {"status": "deleted", "id": creator_id}
+
+
+@api_router.get("/creators/categories/list")
+async def list_creator_categories(project_id: str = Query(...)) -> list[str]:
+    """Get unique categories for creators in a project."""
+    try:
+        pid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    categories = await db.creators.distinct("category", {"project_id": pid})
+    return sorted(categories) if categories else ["general"]
+
+
 app.include_router(api_router)
 
 app.add_middleware(
