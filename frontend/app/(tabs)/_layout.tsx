@@ -4,11 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
 
-const tabIcon = (name: any) => (props: any) => {
-  const { color, size } = props;
-  return <Ionicons name={name} size={size} color={color} />;
-};
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tabIcon = (name: any) => (props: any) => {
   const { color, size } = props;
