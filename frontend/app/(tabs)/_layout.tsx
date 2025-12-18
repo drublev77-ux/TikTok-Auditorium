@@ -9,6 +9,12 @@ const tabIcon = (name: any) => (props: any) => {
   return <Ionicons name={name} size={size} color={color} />;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tabIcon = (name: any) => (props: any) => {
+  const { color, size } = props;
+  return <Ionicons name={name} size={size} color={color} />;
+};
+
 export default function TabsLayout() {
   const { t } = useTranslation();
 
