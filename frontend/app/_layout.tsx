@@ -5,6 +5,8 @@ import { StatusBar } from "expo-status-bar";
 
 import { initI18n } from "../src/i18n";
 import { queryClient } from "../src/query/queryClient";
+import "../src/store/disableZustandDevtools";
+
 import { ProjectProvider } from "../src/store/ProjectContext";
 
 export default function RootLayout() {
