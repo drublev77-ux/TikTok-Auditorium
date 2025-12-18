@@ -1,12 +1,11 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Redirect } from "expo-router";
-import { useProjectStore } from "../src/store/projectStore";
+import { useProject } from "../src/store/ProjectContext";
 
 export default function Index() {
-  const currentProject = useProjectStore((s) => s.currentProject);
+  const { currentProject, isHydrating } = useProject();
 
-  // If user already selected a project before  go straight to tabs
+  if (isHydrating) return null;
   if (currentProject?.id) return <Redirect href="/(tabs)/dashboard" />;
-
   return <Redirect href="/projects" />;
 }

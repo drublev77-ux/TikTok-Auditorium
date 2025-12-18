@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { StatusBar } from "expo-status-bar";
+
 import { initI18n } from "../src/i18n";
 import { queryClient } from "../src/query/queryClient";
-import { StatusBar } from "expo-status-bar";
+import { ProjectProvider } from "../src/store/ProjectContext";
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
@@ -19,12 +21,14 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        }}
-      />
+      <ProjectProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        />
+      </ProjectProvider>
     </QueryClientProvider>
   );
 }

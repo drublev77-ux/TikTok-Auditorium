@@ -4,13 +4,12 @@ import { useTranslation } from "react-i18next";
 import { AppScreen } from "../../src/components/AppScreen";
 import { Button } from "../../src/components/Button";
 import { colors } from "../../src/theme/colors";
-import { useProjectStore } from "../../src/store/projectStore";
+import { useProject } from "../../src/store/ProjectContext";
 import { router } from "expo-router";
 
 export default function DashboardTab() {
   const { t } = useTranslation();
-  const project = useProjectStore((s) => s.currentProject);
-  const setProject = useProjectStore((s) => s.setCurrentProject);
+  const { currentProject: project, setCurrentProject: setProject } = useProject();
 
   return (
     <AppScreen>

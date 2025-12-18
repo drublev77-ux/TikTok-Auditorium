@@ -9,11 +9,11 @@ import { AppScreen } from "../../src/components/AppScreen";
 import { Button } from "../../src/components/Button";
 import { colors } from "../../src/theme/colors";
 import { listProjects } from "../../src/api/projects";
-import { useProjectStore } from "../../src/store/projectStore";
+import { useProject } from "../../src/store/ProjectContext";
 
 export default function ProjectsScreen() {
   const { t } = useTranslation();
-  const setCurrentProject = useProjectStore((s) => s.setCurrentProject);
+  const { setCurrentProject } = useProject();
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ["projects"],

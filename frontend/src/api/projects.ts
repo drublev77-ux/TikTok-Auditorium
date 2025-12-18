@@ -1,5 +1,5 @@
 import { apiFetch } from "./http";
-import type { Project } from "../store/projectStore";
+import type { Project } from "../store/project";
 
 export type Org = {
   id: string;
