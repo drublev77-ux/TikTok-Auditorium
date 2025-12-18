@@ -166,8 +166,7 @@
 ##   test_sequence: 1
 ##   run_ui: false
 ## test_plan:
-##   current_focus:
-##     - "Module A: Audience Avatar UI"
+##   current_focus: []
 ##   stuck_tasks: []
 ##   test_all: false
 ##   test_priority: "high_first"
@@ -184,3 +183,7 @@
 ##     message: "NEW: Module A - Audience Avatars implemented. Please test backend endpoints: POST /api/audience/avatars (create with project_id, name, hashtags[], geolocation), GET /api/audience/avatars?project_id=X (list), GET /api/audience/avatars/:id (get one), PATCH /api/audience/avatars/:id (update), DELETE /api/audience/avatars/:id (delete). Test hashtag normalization (# prefix, lowercase). Test validation errors for missing required fields."
 ##   - agent: "testing"
 ##     message: "✅ MODULE A AVATAR API TESTING COMPLETE: Fixed critical route registration issue and verified all 5 avatar endpoints working perfectly. Comprehensive testing with 17 test cases all passed. POST creates avatars with proper hashtag normalization (adds # prefix, converts to lowercase), GET lists/retrieves avatars correctly, PATCH updates with validation, DELETE removes avatars. Error handling robust: 400 for invalid IDs, 404 for non-existent resources, 422 for missing fields. Hashtag normalization tested extensively with mixed cases and prefixes. Backend Module A is production-ready."
+##   - agent: "main"
+##     message: "Module A - Audience Avatar UI implemented and ready for testing. Test the complete flow: navigate to ЦА tab, verify empty state or existing avatars, test create form (name, hashtags with + button, geolocation, notes), verify avatar cards display correctly, test details screen with interests section, verify navigation works. Mobile dimensions: iPhone 13 (390x844)."
+##   - agent: "testing"
+##     message: "✅ MODULE A AUDIENCE AVATAR UI TESTING COMPLETE: Comprehensive mobile testing successful on iPhone 13 dimensions. All functionality verified: Audience tab navigation, avatar list with proper cards (name, geolocation, hashtag chips), create form with all required fields (name, hashtags with + button, geolocation with icon, notes), avatar details screen showing name/geo/hashtags/interests section, navigation between screens. Backend integration working properly. UI renders correctly on mobile. No critical issues found. Module A is production-ready."
