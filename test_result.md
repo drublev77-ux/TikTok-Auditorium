@@ -101,7 +101,7 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
-## user_problem_statement: TikTok Auditorium (mobile MVP) — Phase 0-1 backend foundation (health, orgs/projects CRUD, manual import)
+## user_problem_statement: TikTok Auditorium (mobile MVP) — Phase 0-1 backend foundation (health, orgs/projects CRUD, manual import) + Module A: Audience Avatars
 ## backend:
 ##   - task: "Phase 0-1: Core API (health, orgs, projects, manual imports)"
 ##     implemented: true
@@ -117,6 +117,17 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "✅ ALL TESTS PASSED: Comprehensive testing completed using both Python requests and curl. Health endpoint returns ok=true/mongo=true. Orgs CRUD working (create/list). Projects CRUD working (create/list/get by ID). Manual imports working with items array and CSV base64. Error handling working correctly for invalid project_id (400) and invalid CSV (400/404). All 10 test cases passed successfully. Backend Phase 0-1 is fully functional."
+##   - task: "Module A: Audience Avatar CRUD API"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/backend/server.py"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Implemented /api/audience/avatars endpoints: POST (create), GET (list by project_id), GET/:id (get single), PATCH/:id (update), DELETE/:id (delete). Required fields: name, hashtags (min 1), geolocation. Hashtags auto-normalize with # prefix and lowercase. Needs testing."
 ## frontend:
 ##   - task: "Phase 0-1: App shell (tabs + projects UI + i18n)"
 ##     implemented: true
