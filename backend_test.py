@@ -861,8 +861,8 @@ def test_subscription_retrieval(results: TestResults):
         results.log_fail("Subscription Retrieval", f"Request failed: {str(e)}")
 
 def main():
-    """Run all backend tests including new Avatar API tests"""
-    print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A)")
+    """Run all backend tests including Avatar API and Billing/Payment tests"""
+    print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A + Billing)")
     print(f"📡 Testing against: {BASE_URL}")
     print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*60)
@@ -881,7 +881,7 @@ def main():
     print("\n3️⃣ Testing Projects CRUD")
     project_id = test_projects_crud(results, org_id)
     
-    # NEW: Module A - Audience Avatar Tests
+    # Module A - Audience Avatar Tests
     print("\n🎯 MODULE A: AUDIENCE AVATAR TESTS")
     print("="*40)
     
@@ -906,11 +906,36 @@ def main():
     print("\n🔟 Testing Avatar Error Scenarios")
     test_avatar_error_scenarios(results)
     
+    # NEW: Billing/Payment Tests
+    print("\n💳 BILLING/PAYMENT SYSTEM TESTS")
+    print("="*40)
+    
+    print("\n1️⃣1️⃣ Testing Billing Plans")
+    test_billing_plans(results)
+    
+    print("\n1️⃣2️⃣ Testing Payment Methods")
+    test_payment_methods(results)
+    
+    print("\n1️⃣3️⃣ Testing Payment Request Creation")
+    test_payment_requests_creation(results)
+    
+    print("\n1️⃣4️⃣ Testing Payment Request Errors")
+    test_payment_requests_errors(results)
+    
+    print("\n1️⃣5️⃣ Testing Payment Request Retrieval")
+    test_payment_requests_retrieval(results)
+    
+    print("\n1️⃣6️⃣ Testing Payment Confirmation")
+    test_payment_confirmation(results)
+    
+    print("\n1️⃣7️⃣ Testing Subscription Retrieval")
+    test_subscription_retrieval(results)
+    
     # Final summary
     success = results.summary()
     
     if success:
-        print("\n🎉 All tests passed! Backend Phase 0-1 + Module A are working correctly.")
+        print("\n🎉 ALL TESTS PASSED! Backend Phase 0-1 + Module A + Billing/Payment are working correctly.")
         sys.exit(0)
     else:
         print(f"\n💥 {results.failed} test(s) failed. Backend needs attention.")
