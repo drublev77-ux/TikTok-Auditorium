@@ -714,7 +714,7 @@ def test_payment_requests_errors(results: TestResults):
         else:
             results.log_fail("Payment Request Error - Invalid Org ID", f"Expected 400, got {response.status_code}")
         
-        # Test 3: Invalid plan_id
+        # Test 3: Invalid plan_id (Pydantic validation returns 422)
         invalid_plan_request = {
             "org_id": org_id,
             "plan_id": "invalid_plan",
@@ -723,11 +723,11 @@ def test_payment_requests_errors(results: TestResults):
         
         response = requests.post(f"{BASE_URL}/billing/payment-requests", json=invalid_plan_request, timeout=10)
         
-        if response.status_code == 400:
+        if response.status_code == 422:  # Pydantic validation error for invalid enum value
             results.log_pass("Payment Request Error - Invalid Plan ID")
-            print("   Correctly rejected invalid plan_id")
+            print("   Correctly rejected invalid plan_id with 422 (Pydantic validation)")
         else:
-            results.log_fail("Payment Request Error - Invalid Plan ID", f"Expected 400, got {response.status_code}")
+            results.log_fail("Payment Request Error - Invalid Plan ID", f"Expected 422, got {response.status_code}")
             
     except Exception as e:
         results.log_fail("Payment Request Error Tests", f"Request failed: {str(e)}")
