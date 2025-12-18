@@ -1212,6 +1212,327 @@ async def list_creator_categories(project_id: str = Query(...)) -> list[str]:
     return sorted(categories) if categories else ["general"]
 
 
+# ─── Module D: Content Planner Models ─────────────────────────────────────────
+EMERGENT_LLM_KEY = "sk-emergent-e64Cf8103B8098f024"
+
+class ContentIdeaRequest(BaseModel):
+    project_id: str
+    topic: str = Field(min_length=2, max_length=200)
+    target_audience: str | None = None
+    hashtags: list[str] | None = None
+    content_type: Literal["video", "trend", "educational", "promotional"] = "video"
+    count: int = Field(default=5, ge=1, le=10)
+
+
+class ContentIdea(BaseModel):
+    title: str
+    description: str
+    hook: str  # First 3 seconds hook
+    hashtags: list[str]
+    best_posting_time: str
+    estimated_duration: str
+    content_tips: list[str]
+
+
+class ContentPlanCreate(BaseModel):
+    project_id: str
+    title: str = Field(min_length=2, max_length=200)
+    scheduled_date: str  # ISO date string
+    scheduled_time: str  # HH:MM format
+    content_type: str = "video"
+    description: str | None = None
+    hashtags: list[str] | None = None
+    status: Literal["draft", "scheduled", "published", "archived"] = "draft"
+    has_ad_label: bool = False  # Mandatory ad labeling check
+
+
+class ContentPlanUpdate(BaseModel):
+    title: str | None = None
+    scheduled_date: str | None = None
+    scheduled_time: str | None = None
+    content_type: str | None = None
+    description: str | None = None
+    hashtags: list[str] | None = None
+    status: Literal["draft", "scheduled", "published", "archived"] | None = None
+    has_ad_label: bool | None = None
+
+
+class ContentPlanOut(BaseModel):
+    id: str
+    project_id: str
+    title: str
+    scheduled_date: str
+    scheduled_time: str
+    content_type: str
+    description: str | None
+    hashtags: list[str]
+    status: str
+    has_ad_label: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+# ─── Module D: Content Planner AI Endpoints ───────────────────────────────────
+@api_router.post("/planner/generate-ideas")
+async def generate_content_ideas(payload: ContentIdeaRequest) -> dict[str, Any]:
+    """Generate AI-powered content ideas using OpenAI."""
+    try:
+        pid = ObjectId(payload.project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    project = await db.projects.find_one({"_id": pid})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Build prompt for AI
+    audience_context = f"Target audience: {payload.target_audience}" if payload.target_audience else ""
+    hashtag_context = f"Related hashtags: {', '.join(payload.hashtags)}" if payload.hashtags else ""
+    
+    prompt = f"""You are a TikTok content strategist. Generate {payload.count} creative content ideas for the following:
+
+Topic: {payload.topic}
+Content Type: {payload.content_type}
+{audience_context}
+{hashtag_context}
+
+For each idea, provide:
+1. Title (catchy, max 60 chars)
+2. Description (detailed concept, 2-3 sentences)
+3. Hook (first 3 seconds to grab attention)
+4. Hashtags (5-7 relevant trending hashtags)
+5. Best posting time (e.g., "18:00-20:00 weekdays")
+6. Estimated duration (e.g., "15-30 seconds")
+7. Content tips (3 actionable tips)
+
+Respond in JSON format with array "ideas" containing objects with fields: title, description, hook, hashtags (array), best_posting_time, estimated_duration, content_tips (array).
+Make ideas viral-worthy and engaging for TikTok audience. Use Russian language for content."""
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {EMERGENT_LLM_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "You are an expert TikTok content strategist who creates viral content ideas. Always respond in valid JSON format."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.8,
+                    "response_format": {"type": "json_object"}
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail=f"AI service error: {response.text}")
+            
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
+            
+            import json
+            ideas_data = json.loads(content)
+            
+            return {
+                "topic": payload.topic,
+                "content_type": payload.content_type,
+                "ideas": ideas_data.get("ideas", []),
+                "generated_at": datetime.utcnow().isoformat()
+            }
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="AI request timeout")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+
+
+@api_router.post("/planner/optimize-hashtags")
+async def optimize_hashtags(hashtags: list[str] = [], topic: str = "") -> dict[str, Any]:
+    """AI-powered hashtag optimization."""
+    if not hashtags and not topic:
+        raise HTTPException(status_code=400, detail="Provide hashtags or topic")
+
+    prompt = f"""Analyze and optimize these TikTok hashtags for maximum reach:
+Input hashtags: {', '.join(hashtags) if hashtags else 'None'}
+Topic: {topic if topic else 'General'}
+
+Provide:
+1. optimized_hashtags: 10 optimized hashtags (mix of trending, niche, and branded)
+2. removed_hashtags: any hashtags to remove (banned, overused, irrelevant)
+3. hashtag_strategy: brief strategy explanation
+
+Respond in JSON format with fields: optimized_hashtags (array), removed_hashtags (array), hashtag_strategy (string).
+Use a mix of English and Russian hashtags for TikTok."""
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {EMERGENT_LLM_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "You are a TikTok hashtag expert. Respond in JSON."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.6,
+                    "response_format": {"type": "json_object"}
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=500, detail="AI service error")
+            
+            result = response.json()
+            import json
+            return json.loads(result["choices"][0]["message"]["content"])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
+
+
+# ─── Module D: Content Plan CRUD ──────────────────────────────────────────────
+@api_router.post("/planner/posts", response_model=ContentPlanOut)
+async def create_content_plan(payload: ContentPlanCreate) -> ContentPlanOut:
+    """Create a scheduled content post."""
+    try:
+        pid = ObjectId(payload.project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    project = await db.projects.find_one({"_id": pid})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    now = datetime.utcnow()
+    doc = {
+        "project_id": pid,
+        "title": payload.title.strip(),
+        "scheduled_date": payload.scheduled_date,
+        "scheduled_time": payload.scheduled_time,
+        "content_type": payload.content_type,
+        "description": payload.description.strip() if payload.description else None,
+        "hashtags": payload.hashtags or [],
+        "status": payload.status,
+        "has_ad_label": payload.has_ad_label,
+        "created_at": now,
+        "updated_at": now,
+    }
+    
+    res = await db.content_plans.insert_one(doc)
+    
+    return ContentPlanOut(
+        id=oid_str(res.inserted_id),
+        project_id=payload.project_id,
+        **{k: v for k, v in doc.items() if k not in ("_id", "project_id")},
+    )
+
+
+@api_router.get("/planner/posts", response_model=list[ContentPlanOut])
+async def list_content_plans(
+    project_id: str = Query(...),
+    status: str | None = Query(default=None),
+) -> list[ContentPlanOut]:
+    """List content plans for a project."""
+    try:
+        pid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    query: dict[str, Any] = {"project_id": pid}
+    if status:
+        query["status"] = status
+
+    docs = await db.content_plans.find(query).sort("scheduled_date", 1).to_list(100)
+    
+    return [
+        ContentPlanOut(
+            id=oid_str(d["_id"]),
+            project_id=oid_str(d["project_id"]),
+            title=d["title"],
+            scheduled_date=d["scheduled_date"],
+            scheduled_time=d["scheduled_time"],
+            content_type=d.get("content_type", "video"),
+            description=d.get("description"),
+            hashtags=d.get("hashtags", []),
+            status=d.get("status", "draft"),
+            has_ad_label=d.get("has_ad_label", False),
+            created_at=d["created_at"],
+            updated_at=d.get("updated_at", d["created_at"]),
+        )
+        for d in docs
+    ]
+
+
+@api_router.patch("/planner/posts/{post_id}", response_model=ContentPlanOut)
+async def update_content_plan(post_id: str, payload: ContentPlanUpdate) -> ContentPlanOut:
+    """Update a content plan."""
+    try:
+        pid = ObjectId(post_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid post_id")
+
+    d = await db.content_plans.find_one({"_id": pid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Content plan not found")
+
+    update_data: dict[str, Any] = {"updated_at": datetime.utcnow()}
+    
+    if payload.title is not None:
+        update_data["title"] = payload.title.strip()
+    if payload.scheduled_date is not None:
+        update_data["scheduled_date"] = payload.scheduled_date
+    if payload.scheduled_time is not None:
+        update_data["scheduled_time"] = payload.scheduled_time
+    if payload.content_type is not None:
+        update_data["content_type"] = payload.content_type
+    if payload.description is not None:
+        update_data["description"] = payload.description.strip() if payload.description else None
+    if payload.hashtags is not None:
+        update_data["hashtags"] = payload.hashtags
+    if payload.status is not None:
+        update_data["status"] = payload.status
+    if payload.has_ad_label is not None:
+        update_data["has_ad_label"] = payload.has_ad_label
+
+    await db.content_plans.update_one({"_id": pid}, {"$set": update_data})
+    d = await db.content_plans.find_one({"_id": pid})
+
+    return ContentPlanOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        title=d["title"],
+        scheduled_date=d["scheduled_date"],
+        scheduled_time=d["scheduled_time"],
+        content_type=d.get("content_type", "video"),
+        description=d.get("description"),
+        hashtags=d.get("hashtags", []),
+        status=d.get("status", "draft"),
+        has_ad_label=d.get("has_ad_label", False),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.delete("/planner/posts/{post_id}")
+async def delete_content_plan(post_id: str) -> dict[str, str]:
+    """Delete a content plan."""
+    try:
+        pid = ObjectId(post_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid post_id")
+
+    result = await db.content_plans.delete_one({"_id": pid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Content plan not found")
+
+    return {"status": "deleted", "id": post_id}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
