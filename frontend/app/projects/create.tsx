@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 
 import { AppScreen } from "../../src/components/AppScreen";
 import { Button } from "../../src/components/Button";
 import { Input } from "../../src/components/Input";
 import { colors } from "../../src/theme/colors";
-import { createOrg, createProject, listOrgs } from "../../src/api/projects";
+import { createOrg, createProject } from "../../src/api/projects";
 
 export default function CreateProjectScreen() {
   const { t } = useTranslation();
@@ -18,13 +18,6 @@ export default function CreateProjectScreen() {
   const [projectName, setProjectName] = useState("");
   const [timezone, setTimezone] = useState("UTC");
   const [lang, setLang] = useState<"ru" | "en">("ru");
-
-  const { data: orgs } = useQuery({
-    queryKey: ["orgs"],
-    queryFn: () => listOrgs(),
-  });
-
-  const defaultOrgId = orgs?.[0]?.id;
 
   const canSave = useMemo(() => {
     return orgName.trim().length >= 2 && projectName.trim().length >= 2;
@@ -57,7 +50,6 @@ export default function CreateProjectScreen() {
 
         <View style={{ height: 16 }} />
 
-        <PressableHeader label={t("orgName")} hint="e.g. ACME Agency" />
         <Input label={t("orgName")} value={orgName} onChangeText={setOrgName} autoCapitalize="words" />
         <View style={{ height: 12 }} />
 
@@ -97,14 +89,6 @@ export default function CreateProjectScreen() {
         </View>
       </AppScreen>
     </KeyboardAvoidingView>
-  );
-}
-
-function PressableHeader({ label }: { label: string; hint?: string }) {
-  return (
-    <View style={{ marginBottom: 8 }}>
-      <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "700" }}>{label}</Text>
-    </View>
   );
 }
 
