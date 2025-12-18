@@ -4,8 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
 
-const tabIcon = (name: any) => (props: any) => {
-  const { color, size } = props;
+const tabIcon = (name) => ({ color, size }) => {
   return <Ionicons name={name} size={size} color={color} />;
 };
 
