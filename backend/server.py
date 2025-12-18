@@ -485,6 +485,362 @@ async def delete_audience_avatar(avatar_id: str) -> dict[str, str]:
     return {"status": "deleted", "id": avatar_id}
 
 
+# ─── Subscription & Payment Models ────────────────────────────────────────────
+SUBSCRIPTION_PLANS = {
+    "basic": {
+        "id": "basic",
+        "name": "Basic",
+        "price_usd": 50,
+        "features": [
+            "1 project",
+            "5 audience avatars",
+            "10 competitor analyses",
+            "Basic analytics",
+        ],
+    },
+    "pro": {
+        "id": "pro",
+        "name": "Pro",
+        "price_usd": 100,
+        "features": [
+            "5 projects",
+            "Unlimited avatars",
+            "50 competitor analyses",
+            "Advanced analytics",
+            "Blogger discovery",
+            "Content planner",
+        ],
+    },
+    "agency": {
+        "id": "agency",
+        "name": "Agency",
+        "price_usd": 250,
+        "features": [
+            "Unlimited projects",
+            "Unlimited avatars",
+            "Unlimited analyses",
+            "White-label reports",
+            "API access",
+            "Priority support",
+            "Team collaboration",
+        ],
+    },
+}
+
+PAYMENT_CONFIG = {
+    "crypto": {
+        "wallet_address": "0xcecd3bcf98d5642722258c346c5dc1cdb83c8986",
+        "supported_tokens": ["USDT", "USDC", "ETH", "BTC"],
+        "networks": [
+            {"id": "erc20", "name": "Ethereum (ERC-20)", "chain_id": 1},
+            {"id": "bep20", "name": "BSC (BEP-20)", "chain_id": 56},
+            {"id": "trc20", "name": "Tron (TRC-20)", "chain_id": None},
+            {"id": "polygon", "name": "Polygon", "chain_id": 137},
+        ],
+    },
+    "bank": {
+        "account_number": "BY43POIS30140008401005002629",
+        "bic": "POISBY2X",
+        "currency": "USD",
+        "bank_name": "Bank (BIC: POISBY2X)",
+    },
+    "paypal": {
+        "account": "TPFTECHNOLOGI",
+        "email": "TPFTECHNOLOGI",
+    },
+}
+
+
+class SubscriptionPlanOut(BaseModel):
+    id: str
+    name: str
+    price_usd: int
+    features: list[str]
+
+
+class PaymentMethodOut(BaseModel):
+    method: Literal["crypto", "bank", "paypal"]
+    details: dict[str, Any]
+
+
+class PaymentRequestCreate(BaseModel):
+    org_id: str
+    plan_id: Literal["basic", "pro", "agency"]
+    payment_method: Literal["crypto", "bank", "paypal"]
+    crypto_network: str | None = None
+    crypto_token: str | None = None
+
+
+class PaymentRequestOut(BaseModel):
+    id: str
+    org_id: str
+    plan_id: str
+    plan_name: str
+    amount_usd: int
+    payment_method: str
+    status: Literal["pending", "confirmed", "expired", "cancelled"]
+    payment_details: dict[str, Any]
+    created_at: datetime
+    expires_at: datetime
+
+
+class SubscriptionOut(BaseModel):
+    id: str
+    org_id: str
+    plan_id: str
+    plan_name: str
+    status: Literal["active", "expired", "cancelled"]
+    started_at: datetime
+    expires_at: datetime
+
+
+# ─── Subscription & Payment Endpoints ─────────────────────────────────────────
+@api_router.get("/billing/plans", response_model=list[SubscriptionPlanOut])
+async def list_subscription_plans() -> list[SubscriptionPlanOut]:
+    """Get all available subscription plans."""
+    return [SubscriptionPlanOut(**plan) for plan in SUBSCRIPTION_PLANS.values()]
+
+
+@api_router.get("/billing/plans/{plan_id}", response_model=SubscriptionPlanOut)
+async def get_subscription_plan(plan_id: str) -> SubscriptionPlanOut:
+    """Get a specific subscription plan."""
+    if plan_id not in SUBSCRIPTION_PLANS:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return SubscriptionPlanOut(**SUBSCRIPTION_PLANS[plan_id])
+
+
+@api_router.get("/billing/payment-methods")
+async def list_payment_methods() -> dict[str, Any]:
+    """Get available payment methods and their details."""
+    return {
+        "methods": ["crypto", "bank", "paypal"],
+        "crypto": {
+            "wallet_address": PAYMENT_CONFIG["crypto"]["wallet_address"],
+            "supported_tokens": PAYMENT_CONFIG["crypto"]["supported_tokens"],
+            "networks": PAYMENT_CONFIG["crypto"]["networks"],
+        },
+        "bank": PAYMENT_CONFIG["bank"],
+        "paypal": PAYMENT_CONFIG["paypal"],
+    }
+
+
+@api_router.post("/billing/payment-requests", response_model=PaymentRequestOut)
+async def create_payment_request(payload: PaymentRequestCreate) -> PaymentRequestOut:
+    """Create a new payment request for a subscription."""
+    # Validate org
+    try:
+        org_oid = ObjectId(payload.org_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid org_id")
+
+    org = await db.orgs.find_one({"_id": org_oid})
+    if not org:
+        raise HTTPException(status_code=404, detail="Org not found")
+
+    # Get plan
+    if payload.plan_id not in SUBSCRIPTION_PLANS:
+        raise HTTPException(status_code=400, detail="Invalid plan_id")
+    
+    plan = SUBSCRIPTION_PLANS[payload.plan_id]
+    
+    # Build payment details based on method
+    payment_details: dict[str, Any] = {}
+    
+    if payload.payment_method == "crypto":
+        if not payload.crypto_network or not payload.crypto_token:
+            raise HTTPException(
+                status_code=400, 
+                detail="crypto_network and crypto_token required for crypto payments"
+            )
+        payment_details = {
+            "wallet_address": PAYMENT_CONFIG["crypto"]["wallet_address"],
+            "network": payload.crypto_network,
+            "token": payload.crypto_token,
+            "amount_crypto": f"{plan['price_usd']} USD equivalent in {payload.crypto_token}",
+        }
+    elif payload.payment_method == "bank":
+        payment_details = {
+            **PAYMENT_CONFIG["bank"],
+            "reference": f"TIKAUD-{org_oid}-{payload.plan_id.upper()}",
+        }
+    elif payload.payment_method == "paypal":
+        payment_details = {
+            **PAYMENT_CONFIG["paypal"],
+            "reference": f"TIKAUD-{org_oid}-{payload.plan_id.upper()}",
+        }
+
+    now = datetime.utcnow()
+    from datetime import timedelta
+    expires_at = now + timedelta(hours=24)  # 24 hour expiry for payment
+
+    doc = {
+        "org_id": org_oid,
+        "plan_id": payload.plan_id,
+        "plan_name": plan["name"],
+        "amount_usd": plan["price_usd"],
+        "payment_method": payload.payment_method,
+        "payment_details": payment_details,
+        "status": "pending",
+        "created_at": now,
+        "expires_at": expires_at,
+    }
+    
+    res = await db.payment_requests.insert_one(doc)
+    
+    return PaymentRequestOut(
+        id=oid_str(res.inserted_id),
+        org_id=payload.org_id,
+        plan_id=payload.plan_id,
+        plan_name=plan["name"],
+        amount_usd=plan["price_usd"],
+        payment_method=payload.payment_method,
+        status="pending",
+        payment_details=payment_details,
+        created_at=now,
+        expires_at=expires_at,
+    )
+
+
+@api_router.get("/billing/payment-requests", response_model=list[PaymentRequestOut])
+async def list_payment_requests(org_id: str = Query(...)) -> list[PaymentRequestOut]:
+    """List payment requests for an organization."""
+    try:
+        org_oid = ObjectId(org_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid org_id")
+
+    docs = await db.payment_requests.find({"org_id": org_oid}).sort("created_at", -1).to_list(100)
+    
+    return [
+        PaymentRequestOut(
+            id=oid_str(d["_id"]),
+            org_id=oid_str(d["org_id"]),
+            plan_id=d["plan_id"],
+            plan_name=d["plan_name"],
+            amount_usd=d["amount_usd"],
+            payment_method=d["payment_method"],
+            status=d["status"],
+            payment_details=d["payment_details"],
+            created_at=d["created_at"],
+            expires_at=d["expires_at"],
+        )
+        for d in docs
+    ]
+
+
+@api_router.get("/billing/payment-requests/{request_id}", response_model=PaymentRequestOut)
+async def get_payment_request(request_id: str) -> PaymentRequestOut:
+    """Get a specific payment request."""
+    try:
+        rid = ObjectId(request_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request_id")
+
+    d = await db.payment_requests.find_one({"_id": rid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Payment request not found")
+
+    return PaymentRequestOut(
+        id=oid_str(d["_id"]),
+        org_id=oid_str(d["org_id"]),
+        plan_id=d["plan_id"],
+        plan_name=d["plan_name"],
+        amount_usd=d["amount_usd"],
+        payment_method=d["payment_method"],
+        status=d["status"],
+        payment_details=d["payment_details"],
+        created_at=d["created_at"],
+        expires_at=d["expires_at"],
+    )
+
+
+@api_router.patch("/billing/payment-requests/{request_id}/confirm")
+async def confirm_payment_request(request_id: str) -> PaymentRequestOut:
+    """Admin endpoint to confirm a payment and activate subscription."""
+    try:
+        rid = ObjectId(request_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid request_id")
+
+    d = await db.payment_requests.find_one({"_id": rid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Payment request not found")
+
+    if d["status"] != "pending":
+        raise HTTPException(status_code=400, detail=f"Cannot confirm payment with status: {d['status']}")
+
+    now = datetime.utcnow()
+    from datetime import timedelta
+    subscription_expires = now + timedelta(days=30)
+
+    # Update payment request status
+    await db.payment_requests.update_one(
+        {"_id": rid},
+        {"$set": {"status": "confirmed"}}
+    )
+
+    # Create or update subscription
+    existing_sub = await db.subscriptions.find_one({"org_id": d["org_id"]})
+    
+    if existing_sub:
+        await db.subscriptions.update_one(
+            {"_id": existing_sub["_id"]},
+            {"$set": {
+                "plan_id": d["plan_id"],
+                "plan_name": d["plan_name"],
+                "status": "active",
+                "started_at": now,
+                "expires_at": subscription_expires,
+            }}
+        )
+    else:
+        await db.subscriptions.insert_one({
+            "org_id": d["org_id"],
+            "plan_id": d["plan_id"],
+            "plan_name": d["plan_name"],
+            "status": "active",
+            "started_at": now,
+            "expires_at": subscription_expires,
+        })
+
+    d["status"] = "confirmed"
+    return PaymentRequestOut(
+        id=oid_str(d["_id"]),
+        org_id=oid_str(d["org_id"]),
+        plan_id=d["plan_id"],
+        plan_name=d["plan_name"],
+        amount_usd=d["amount_usd"],
+        payment_method=d["payment_method"],
+        status="confirmed",
+        payment_details=d["payment_details"],
+        created_at=d["created_at"],
+        expires_at=d["expires_at"],
+    )
+
+
+@api_router.get("/billing/subscription")
+async def get_subscription(org_id: str = Query(...)) -> SubscriptionOut | dict[str, None]:
+    """Get current subscription for an organization."""
+    try:
+        org_oid = ObjectId(org_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid org_id")
+
+    d = await db.subscriptions.find_one({"org_id": org_oid})
+    if not d:
+        return {"subscription": None}
+
+    return SubscriptionOut(
+        id=oid_str(d["_id"]),
+        org_id=oid_str(d["org_id"]),
+        plan_id=d["plan_id"],
+        plan_name=d["plan_name"],
+        status=d["status"],
+        started_at=d["started_at"],
+        expires_at=d["expires_at"],
+    )
+
+
 app.include_router(api_router)
 
 app.add_middleware(
