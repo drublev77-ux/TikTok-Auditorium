@@ -545,8 +545,8 @@ PAYMENT_CONFIG = {
         "bank_name": "Bank (BIC: POISBY2X)",
     },
     "paypal": {
-        "account": "TPFTECHNOLOGI",
-        "email": "TPFTECHNOLOGI",
+        "account": "TPFTECHNOLOGY",
+        "email": "TPFTECHNOLOGY",
     },
 }
 
