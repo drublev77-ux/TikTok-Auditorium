@@ -119,15 +119,18 @@
 ##         comment: "✅ ALL TESTS PASSED: Comprehensive testing completed using both Python requests and curl. Health endpoint returns ok=true/mongo=true. Orgs CRUD working (create/list). Projects CRUD working (create/list/get by ID). Manual imports working with items array and CSV base64. Error handling working correctly for invalid project_id (400) and invalid CSV (400/404). All 10 test cases passed successfully. Backend Phase 0-1 is fully functional."
 ##   - task: "Module A: Audience Avatar CRUD API"
 ##     implemented: true
-##     working: "NA"
+##     working: true
 ##     file: "/app/backend/server.py"
 ##     stuck_count: 0
 ##     priority: "high"
-##     needs_retesting: true
+##     needs_retesting: false
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
 ##         comment: "Implemented /api/audience/avatars endpoints: POST (create), GET (list by project_id), GET/:id (get single), PATCH/:id (update), DELETE/:id (delete). Required fields: name, hashtags (min 1), geolocation. Hashtags auto-normalize with # prefix and lowercase. Needs testing."
+##       - working: true
+##         agent: "testing"
+##         comment: "✅ ALL AVATAR API TESTS PASSED: Fixed route registration issue (endpoints were defined after app.include_router). Comprehensive testing completed for all 5 endpoints. POST /api/audience/avatars working with proper hashtag normalization (adds # prefix, converts to lowercase). GET /api/audience/avatars?project_id=X lists avatars correctly. GET /api/audience/avatars/:id retrieves single avatar. PATCH /api/audience/avatars/:id updates with validation. DELETE /api/audience/avatars/:id removes avatar. Error handling working: 400 for invalid project_id/avatar_id, 404 for non-existent resources, 422 for missing required fields. Hashtag normalization tested with mixed cases and prefixes - all working correctly. All 17 test cases passed successfully."
 ## frontend:
 ##   - task: "Phase 0-1: App shell (tabs + projects UI + i18n)"
 ##     implemented: true
