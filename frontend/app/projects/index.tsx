@@ -34,7 +34,7 @@ export default function ProjectsScreen() {
         <View style={styles.card}>
           <Text style={styles.errorText}>{String((error as Error).message)}</Text>
           <View style={{ height: 12 }} />
-          <Button title="Reload" onPress={() => refetch()} loading={isRefetching} />
+          <Button title={t("loading")} onPress={() => refetch()} loading={isRefetching} />
         </View>
       ) : null}
 
