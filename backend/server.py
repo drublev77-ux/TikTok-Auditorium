@@ -303,17 +303,6 @@ async def create_manual_import(payload: ManualImportCreate) -> ManualImportOut:
     )
 
 
-app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 # ─── Audience Avatar Endpoints ────────────────────────────────────────────────
 @api_router.post(
     "/audience/avatars",
@@ -494,6 +483,17 @@ async def delete_audience_avatar(avatar_id: str) -> dict[str, str]:
         raise HTTPException(status_code=404, detail="Avatar not found")
 
     return {"status": "deleted", "id": avatar_id}
+
+
+app.include_router(api_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("shutdown")
