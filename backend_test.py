@@ -1211,8 +1211,8 @@ def test_creators_errors(results: TestResults):
         results.log_fail("Creators Error Tests", f"Request failed: {str(e)}")
 
 def main():
-    """Run all backend tests including Avatar API and Billing/Payment tests"""
-    print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A + Billing)")
+    """Run all backend tests including Avatar API, Billing/Payment, Competitors, and Creators tests"""
+    print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A + Billing + Module B + Module C)")
     print(f"📡 Testing against: {BASE_URL}")
     print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("="*60)
@@ -1256,7 +1256,7 @@ def main():
     print("\n🔟 Testing Avatar Error Scenarios")
     test_avatar_error_scenarios(results)
     
-    # NEW: Billing/Payment Tests
+    # Billing/Payment Tests
     print("\n💳 BILLING/PAYMENT SYSTEM TESTS")
     print("="*40)
     
@@ -1281,11 +1281,31 @@ def main():
     print("\n1️⃣7️⃣ Testing Subscription Retrieval")
     test_subscription_retrieval(results)
     
+    # NEW: Module B - Competitors Tests
+    print("\n🏆 MODULE B: COMPETITORS API TESTS")
+    print("="*40)
+    
+    print("\n1️⃣8️⃣ Testing Competitors CRUD Operations")
+    test_competitors_crud(results)
+    
+    print("\n1️⃣9️⃣ Testing Competitors Error Scenarios")
+    test_competitors_errors(results)
+    
+    # NEW: Module C - Creators Tests
+    print("\n🎨 MODULE C: CREATORS API TESTS")
+    print("="*40)
+    
+    print("\n2️⃣0️⃣ Testing Creators CRUD Operations")
+    test_creators_crud(results)
+    
+    print("\n2️⃣1️⃣ Testing Creators Error Scenarios")
+    test_creators_errors(results)
+    
     # Final summary
     success = results.summary()
     
     if success:
-        print("\n🎉 ALL TESTS PASSED! Backend Phase 0-1 + Module A + Billing/Payment are working correctly.")
+        print("\n🎉 ALL TESTS PASSED! Backend Phase 0-1 + Module A + Billing/Payment + Module B + Module C are working correctly.")
         sys.exit(0)
     else:
         print(f"\n💥 {results.failed} test(s) failed. Backend needs attention.")
