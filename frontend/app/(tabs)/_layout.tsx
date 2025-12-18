@@ -4,6 +4,11 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
 
+type IconProps = { color: string; size: number };
+
+const tabIcon = (name: React.ComponentProps<typeof Ionicons>["name"]) =>
+  ({ color, size }: IconProps) => <Ionicons name={name} size={size} color={color} />;
+
 export default function TabsLayout() {
   const { t } = useTranslation();
 
@@ -22,49 +27,49 @@ export default function TabsLayout() {
         name="dashboard"
         options={{
           title: t("dashboard"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("grid-outline"),
         }}
       />
       <Tabs.Screen
         name="audience"
         options={{
           title: t("audience"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("people-outline"),
         }}
       />
       <Tabs.Screen
         name="competitors"
         options={{
           title: t("competitors"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="analytics-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("analytics-outline"),
         }}
       />
       <Tabs.Screen
         name="creators"
         options={{
           title: t("creators"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="megaphone-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("megaphone-outline"),
         }}
       />
       <Tabs.Screen
         name="planner"
         options={{
           title: t("planner"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("calendar-outline"),
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
           title: t("analytics"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="pulse-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("pulse-outline"),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t("settings"),
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
+          tabBarIcon: tabIcon("settings-outline"),
         }}
       />
     </Tabs>

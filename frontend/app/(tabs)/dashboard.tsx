@@ -16,7 +16,7 @@ export default function DashboardTab() {
     <AppScreen>
       <View style={styles.card}>
         <Text style={styles.h}>{t("dashboard")}</Text>
-        <Text style={styles.p}>{project ? `${project.name}  ${project.timezone}` : "No project selected"}</Text>
+        <Text style={styles.p}>{project ? `${project.name} • ${project.timezone}` : "No project selected"}</Text>
         <View style={{ height: 12 }} />
         <Button
           title={t("projects")}
