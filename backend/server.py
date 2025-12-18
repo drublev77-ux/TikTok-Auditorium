@@ -314,6 +314,188 @@ app.add_middleware(
 )
 
 
+# ─── Audience Avatar Endpoints ────────────────────────────────────────────────
+@api_router.post(
+    "/audience/avatars",
+    response_model=AudienceAvatarOut,
+    responses={400: {"model": ApiError}, 404: {"model": ApiError}},
+)
+async def create_audience_avatar(payload: AudienceAvatarCreate) -> AudienceAvatarOut:
+    """Create a new audience avatar for a project."""
+    try:
+        pid = ObjectId(payload.project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    project = await db.projects.find_one({"_id": pid})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Normalize hashtags: strip whitespace and ensure # prefix
+    normalized_hashtags = []
+    for tag in payload.hashtags:
+        tag = tag.strip()
+        if tag:
+            if not tag.startswith("#"):
+                tag = f"#{tag}"
+            normalized_hashtags.append(tag.lower())
+    
+    if not normalized_hashtags:
+        raise HTTPException(status_code=400, detail="At least one valid hashtag is required")
+
+    now = datetime.utcnow()
+    doc = {
+        "project_id": pid,
+        "name": payload.name.strip(),
+        "hashtags": normalized_hashtags,
+        "geolocation": payload.geolocation.strip(),
+        "language": payload.language.strip(),
+        "notes": payload.notes.strip() if payload.notes else None,
+        "created_at": now,
+        "updated_at": now,
+    }
+    res = await db.audience_avatars.insert_one(doc)
+
+    return AudienceAvatarOut(
+        id=oid_str(res.inserted_id),
+        project_id=payload.project_id,
+        name=doc["name"],
+        hashtags=doc["hashtags"],
+        geolocation=doc["geolocation"],
+        language=doc["language"],
+        notes=doc["notes"],
+        created_at=now,
+        updated_at=now,
+    )
+
+
+@api_router.get("/audience/avatars", response_model=list[AudienceAvatarOut])
+async def list_audience_avatars(project_id: str = Query(...)) -> list[AudienceAvatarOut]:
+    """List all audience avatars for a project."""
+    try:
+        pid = ObjectId(project_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid project_id")
+
+    docs = await db.audience_avatars.find({"project_id": pid}).sort("created_at", -1).to_list(100)
+    return [
+        AudienceAvatarOut(
+            id=oid_str(d["_id"]),
+            project_id=oid_str(d["project_id"]),
+            name=d["name"],
+            hashtags=d["hashtags"],
+            geolocation=d["geolocation"],
+            language=d.get("language", "ru"),
+            notes=d.get("notes"),
+            created_at=d["created_at"],
+            updated_at=d.get("updated_at", d["created_at"]),
+        )
+        for d in docs
+    ]
+
+
+@api_router.get(
+    "/audience/avatars/{avatar_id}",
+    response_model=AudienceAvatarOut,
+    responses={400: {"model": ApiError}, 404: {"model": ApiError}},
+)
+async def get_audience_avatar(avatar_id: str) -> AudienceAvatarOut:
+    """Get a specific audience avatar by ID."""
+    try:
+        aid = ObjectId(avatar_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid avatar_id")
+
+    d = await db.audience_avatars.find_one({"_id": aid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    return AudienceAvatarOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        hashtags=d["hashtags"],
+        geolocation=d["geolocation"],
+        language=d.get("language", "ru"),
+        notes=d.get("notes"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.patch(
+    "/audience/avatars/{avatar_id}",
+    response_model=AudienceAvatarOut,
+    responses={400: {"model": ApiError}, 404: {"model": ApiError}},
+)
+async def update_audience_avatar(avatar_id: str, payload: AudienceAvatarUpdate) -> AudienceAvatarOut:
+    """Update an existing audience avatar."""
+    try:
+        aid = ObjectId(avatar_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid avatar_id")
+
+    d = await db.audience_avatars.find_one({"_id": aid})
+    if not d:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    update_data: dict[str, Any] = {"updated_at": datetime.utcnow()}
+    
+    if payload.name is not None:
+        update_data["name"] = payload.name.strip()
+    if payload.hashtags is not None:
+        normalized = []
+        for tag in payload.hashtags:
+            tag = tag.strip()
+            if tag:
+                if not tag.startswith("#"):
+                    tag = f"#{tag}"
+                normalized.append(tag.lower())
+        if not normalized:
+            raise HTTPException(status_code=400, detail="At least one valid hashtag is required")
+        update_data["hashtags"] = normalized
+    if payload.geolocation is not None:
+        update_data["geolocation"] = payload.geolocation.strip()
+    if payload.language is not None:
+        update_data["language"] = payload.language.strip()
+    if payload.notes is not None:
+        update_data["notes"] = payload.notes.strip() if payload.notes else None
+
+    await db.audience_avatars.update_one({"_id": aid}, {"$set": update_data})
+    
+    # Fetch updated document
+    d = await db.audience_avatars.find_one({"_id": aid})
+    return AudienceAvatarOut(
+        id=oid_str(d["_id"]),
+        project_id=oid_str(d["project_id"]),
+        name=d["name"],
+        hashtags=d["hashtags"],
+        geolocation=d["geolocation"],
+        language=d.get("language", "ru"),
+        notes=d.get("notes"),
+        created_at=d["created_at"],
+        updated_at=d.get("updated_at", d["created_at"]),
+    )
+
+
+@api_router.delete(
+    "/audience/avatars/{avatar_id}",
+    responses={400: {"model": ApiError}, 404: {"model": ApiError}},
+)
+async def delete_audience_avatar(avatar_id: str) -> dict[str, str]:
+    """Delete an audience avatar."""
+    try:
+        aid = ObjectId(avatar_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid avatar_id")
+
+    result = await db.audience_avatars.delete_one({"_id": aid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+
+    return {"status": "deleted", "id": avatar_id}
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client() -> None:
     client.close()
