@@ -505,6 +505,361 @@ def test_avatar_error_scenarios(results: TestResults):
     except Exception as e:
         results.log_fail("Avatar Error Scenarios", f"Request failed: {str(e)}")
 
+# ─── BILLING/PAYMENT TESTS ────────────────────────────────────────────────────
+
+def test_billing_plans(results: TestResults):
+    """Test subscription plans endpoints"""
+    try:
+        # Test list all plans
+        response = requests.get(f"{BASE_URL}/billing/plans", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("List Billing Plans", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        plans = response.json()
+        
+        if not isinstance(plans, list) or len(plans) != 3:
+            results.log_fail("List Billing Plans", f"Expected 3 plans, got {len(plans) if isinstance(plans, list) else 'non-list'}")
+            return
+            
+        # Verify plan details
+        expected_plans = {
+            "basic": {"price_usd": 50, "name": "Basic"},
+            "pro": {"price_usd": 100, "name": "Pro"}, 
+            "agency": {"price_usd": 250, "name": "Agency"}
+        }
+        
+        for plan in plans:
+            plan_id = plan.get('id')
+            if plan_id in expected_plans:
+                expected = expected_plans[plan_id]
+                if plan.get('price_usd') == expected['price_usd'] and plan.get('name') == expected['name']:
+                    results.log_pass(f"Plan {plan_id} - Correct Details")
+                    print(f"   Plan {plan_id}: ${plan['price_usd']} - {plan['name']}")
+                else:
+                    results.log_fail(f"Plan {plan_id} - Incorrect Details", f"Expected: {expected}, Got: price=${plan.get('price_usd')}, name={plan.get('name')}")
+            else:
+                results.log_fail("Plan Validation", f"Unexpected plan ID: {plan_id}")
+        
+        # Test individual plan endpoints
+        for plan_id in ["basic", "pro", "agency"]:
+            response = requests.get(f"{BASE_URL}/billing/plans/{plan_id}", timeout=10)
+            if response.status_code == 200:
+                plan_data = response.json()
+                if plan_data.get('id') == plan_id:
+                    results.log_pass(f"Get Individual Plan - {plan_id}")
+                    print(f"   Retrieved {plan_id} plan successfully")
+                else:
+                    results.log_fail(f"Get Individual Plan - {plan_id}", "Plan ID mismatch in response")
+            else:
+                results.log_fail(f"Get Individual Plan - {plan_id}", f"Expected 200, got {response.status_code}")
+        
+        # Test invalid plan
+        response = requests.get(f"{BASE_URL}/billing/plans/invalid", timeout=10)
+        if response.status_code == 404:
+            results.log_pass("Get Invalid Plan - 404 Response")
+            print("   Correctly returned 404 for invalid plan")
+        else:
+            results.log_fail("Get Invalid Plan", f"Expected 404, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Billing Plans Tests", f"Request failed: {str(e)}")
+
+def test_payment_methods(results: TestResults):
+    """Test payment methods endpoint"""
+    try:
+        response = requests.get(f"{BASE_URL}/billing/payment-methods", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Payment Methods", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        methods_data = response.json()
+        
+        # Verify required fields
+        required_fields = ["methods", "crypto", "bank", "paypal"]
+        for field in required_fields:
+            if field not in methods_data:
+                results.log_fail("Payment Methods Structure", f"Missing field '{field}'")
+                return
+                
+        # Verify crypto wallet address
+        crypto_wallet = methods_data['crypto'].get('wallet_address')
+        expected_wallet = "0xcecd3bcf98d5642722258c346c5dc1cdb83c8986"
+        if crypto_wallet == expected_wallet:
+            results.log_pass("Crypto Wallet Address")
+            print(f"   Crypto wallet: {crypto_wallet}")
+        else:
+            results.log_fail("Crypto Wallet Address", f"Expected: {expected_wallet}, Got: {crypto_wallet}")
+            
+        # Verify supported methods
+        methods = methods_data['methods']
+        expected_methods = ["crypto", "bank", "paypal"]
+        if set(methods) == set(expected_methods):
+            results.log_pass("Payment Methods List")
+            print(f"   Supported methods: {methods}")
+        else:
+            results.log_fail("Payment Methods List", f"Expected: {expected_methods}, Got: {methods}")
+            
+    except Exception as e:
+        results.log_fail("Payment Methods Test", f"Request failed: {str(e)}")
+
+def test_payment_requests_creation(results: TestResults):
+    """Test creating payment requests"""
+    org_id = results.test_data.get("org_id")
+    if not org_id:
+        results.log_fail("Payment Requests Creation", "No org_id available")
+        return
+        
+    try:
+        # Test 1: Create crypto payment request
+        crypto_request = {
+            "org_id": org_id,
+            "plan_id": "basic",
+            "payment_method": "crypto",
+            "crypto_network": "erc20",
+            "crypto_token": "USDT"
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=crypto_request, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Create Crypto Payment Request", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        crypto_response = response.json()
+        results.test_data['crypto_request_id'] = crypto_response['id']
+        
+        # Verify crypto payment details
+        if (crypto_response.get('payment_method') == 'crypto' and 
+            crypto_response.get('amount_usd') == 50 and
+            crypto_response.get('plan_id') == 'basic' and
+            crypto_response.get('status') == 'pending'):
+            results.log_pass("Create Crypto Payment Request")
+            print(f"   Created crypto payment request: ${crypto_response['amount_usd']} for {crypto_response['plan_name']}")
+        else:
+            results.log_fail("Create Crypto Payment Request", "Response data validation failed")
+            
+        # Test 2: Create bank payment request
+        bank_request = {
+            "org_id": org_id,
+            "plan_id": "pro", 
+            "payment_method": "bank"
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=bank_request, timeout=10)
+        
+        if response.status_code == 200:
+            bank_response = response.json()
+            results.test_data['bank_request_id'] = bank_response['id']
+            results.log_pass("Create Bank Payment Request")
+            print(f"   Created bank payment request: ${bank_response['amount_usd']} for {bank_response['plan_name']}")
+        else:
+            results.log_fail("Create Bank Payment Request", f"Expected 200, got {response.status_code}")
+            
+        # Test 3: Create PayPal payment request
+        paypal_request = {
+            "org_id": org_id,
+            "plan_id": "agency",
+            "payment_method": "paypal"
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=paypal_request, timeout=10)
+        
+        if response.status_code == 200:
+            paypal_response = response.json()
+            results.test_data['paypal_request_id'] = paypal_response['id']
+            results.log_pass("Create PayPal Payment Request")
+            print(f"   Created PayPal payment request: ${paypal_response['amount_usd']} for {paypal_response['plan_name']}")
+        else:
+            results.log_fail("Create PayPal Payment Request", f"Expected 200, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Payment Requests Creation", f"Request failed: {str(e)}")
+
+def test_payment_requests_errors(results: TestResults):
+    """Test payment request error scenarios"""
+    org_id = results.test_data.get("org_id")
+    
+    try:
+        # Test 1: Crypto request without required fields
+        invalid_crypto = {
+            "org_id": org_id,
+            "plan_id": "basic",
+            "payment_method": "crypto"
+            # Missing crypto_network and crypto_token
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=invalid_crypto, timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Payment Request Error - Missing Crypto Fields")
+            print("   Correctly rejected crypto request without network/token")
+        else:
+            results.log_fail("Payment Request Error - Missing Crypto Fields", f"Expected 400, got {response.status_code}")
+        
+        # Test 2: Invalid org_id
+        invalid_org_request = {
+            "org_id": "invalid_org_id",
+            "plan_id": "basic",
+            "payment_method": "bank"
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=invalid_org_request, timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Payment Request Error - Invalid Org ID")
+            print("   Correctly rejected invalid org_id")
+        else:
+            results.log_fail("Payment Request Error - Invalid Org ID", f"Expected 400, got {response.status_code}")
+        
+        # Test 3: Invalid plan_id
+        invalid_plan_request = {
+            "org_id": org_id,
+            "plan_id": "invalid_plan",
+            "payment_method": "bank"
+        }
+        
+        response = requests.post(f"{BASE_URL}/billing/payment-requests", json=invalid_plan_request, timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Payment Request Error - Invalid Plan ID")
+            print("   Correctly rejected invalid plan_id")
+        else:
+            results.log_fail("Payment Request Error - Invalid Plan ID", f"Expected 400, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Payment Request Error Tests", f"Request failed: {str(e)}")
+
+def test_payment_requests_retrieval(results: TestResults):
+    """Test retrieving payment requests"""
+    org_id = results.test_data.get("org_id")
+    
+    try:
+        # Test 1: List payment requests for org
+        response = requests.get(f"{BASE_URL}/billing/payment-requests?org_id={org_id}", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("List Payment Requests", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        requests_list = response.json()
+        
+        if isinstance(requests_list, list) and len(requests_list) >= 1:
+            results.log_pass("List Payment Requests")
+            print(f"   Found {len(requests_list)} payment requests for org")
+        else:
+            results.log_fail("List Payment Requests", f"Expected list with at least 1 item, got {type(requests_list)} with {len(requests_list) if isinstance(requests_list, list) else 0} items")
+            
+        # Test 2: Get specific payment request
+        if 'crypto_request_id' in results.test_data:
+            request_id = results.test_data['crypto_request_id']
+            response = requests.get(f"{BASE_URL}/billing/payment-requests/{request_id}", timeout=10)
+            
+            if response.status_code == 200:
+                request_data = response.json()
+                if request_data.get('id') == request_id:
+                    results.log_pass("Get Specific Payment Request")
+                    print(f"   Retrieved payment request: {request_data.get('plan_name')} - ${request_data.get('amount_usd')}")
+                else:
+                    results.log_fail("Get Specific Payment Request", "Request ID mismatch")
+            else:
+                results.log_fail("Get Specific Payment Request", f"Expected 200, got {response.status_code}")
+        
+        # Test 3: Error scenarios
+        # Invalid request_id
+        response = requests.get(f"{BASE_URL}/billing/payment-requests/invalid_id", timeout=10)
+        if response.status_code == 400:
+            results.log_pass("Get Payment Request - Invalid ID Error")
+            print("   Correctly rejected invalid request ID")
+        else:
+            results.log_fail("Get Payment Request - Invalid ID Error", f"Expected 400, got {response.status_code}")
+        
+        # Non-existent request
+        fake_id = "507f1f77bcf86cd799439011"
+        response = requests.get(f"{BASE_URL}/billing/payment-requests/{fake_id}", timeout=10)
+        if response.status_code == 404:
+            results.log_pass("Get Payment Request - Not Found Error")
+            print("   Correctly returned 404 for non-existent request")
+        else:
+            results.log_fail("Get Payment Request - Not Found Error", f"Expected 404, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Payment Requests Retrieval", f"Request failed: {str(e)}")
+
+def test_payment_confirmation(results: TestResults):
+    """Test payment confirmation and subscription creation"""
+    if 'crypto_request_id' not in results.test_data:
+        results.log_fail("Payment Confirmation", "No crypto request ID available")
+        return
+        
+    request_id = results.test_data['crypto_request_id']
+    
+    try:
+        # Test 1: Confirm payment
+        response = requests.patch(f"{BASE_URL}/billing/payment-requests/{request_id}/confirm", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Confirm Payment Request", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        confirm_response = response.json()
+        
+        if confirm_response.get('status') == 'confirmed':
+            results.log_pass("Confirm Payment Request")
+            print(f"   Payment confirmed for {confirm_response.get('plan_name')} plan")
+        else:
+            results.log_fail("Confirm Payment Request", f"Expected status 'confirmed', got '{confirm_response.get('status')}'")
+            
+        # Test 2: Try to confirm again (should fail)
+        response = requests.patch(f"{BASE_URL}/billing/payment-requests/{request_id}/confirm", timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Confirm Payment Request - Already Confirmed Error")
+            print("   Correctly rejected re-confirmation of already confirmed payment")
+        else:
+            results.log_fail("Confirm Payment Request - Already Confirmed Error", f"Expected 400, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Payment Confirmation", f"Request failed: {str(e)}")
+
+def test_subscription_retrieval(results: TestResults):
+    """Test subscription retrieval after payment confirmation"""
+    org_id = results.test_data.get("org_id")
+    
+    try:
+        # Get subscription for org
+        response = requests.get(f"{BASE_URL}/billing/subscription?org_id={org_id}", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Get Subscription", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        sub_response = response.json()
+        
+        # Check if subscription was created after payment confirmation
+        if 'id' in sub_response and sub_response.get('status') == 'active':
+            results.log_pass("Get Active Subscription")
+            print(f"   Active subscription: {sub_response.get('plan_name')} ({sub_response.get('plan_id')})")
+            print(f"   Status: {sub_response.get('status')}")
+        elif sub_response.get('subscription') is None:
+            results.log_pass("Get Subscription - No Subscription Found")
+            print("   No subscription found (expected if payment wasn't confirmed)")
+        else:
+            results.log_fail("Get Subscription", f"Unexpected response format: {sub_response}")
+            
+        # Test invalid org_id
+        response = requests.get(f"{BASE_URL}/billing/subscription?org_id=invalid_org", timeout=10)
+        if response.status_code == 400:
+            results.log_pass("Get Subscription - Invalid Org ID Error")
+            print("   Correctly rejected invalid org_id")
+        else:
+            results.log_fail("Get Subscription - Invalid Org ID Error", f"Expected 400, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Subscription Retrieval", f"Request failed: {str(e)}")
+
 def main():
     """Run all backend tests including new Avatar API tests"""
     print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A)")
