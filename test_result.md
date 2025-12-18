@@ -191,7 +191,8 @@
 ##   test_sequence: 1
 ##   run_ui: false
 ## test_plan:
-##   current_focus: []
+##   current_focus:
+##     - "Billing/Payment System UI"
 ##   stuck_tasks: []
 ##   test_all: false
 ##   test_priority: "high_first"
