@@ -119,16 +119,16 @@
 ##         comment: "✅ ALL TESTS PASSED: Comprehensive testing completed using both Python requests and curl. Health endpoint returns ok=true/mongo=true. Orgs CRUD working (create/list). Projects CRUD working (create/list/get by ID). Manual imports working with items array and CSV base64. Error handling working correctly for invalid project_id (400) and invalid CSV (400/404). All 10 test cases passed successfully. Backend Phase 0-1 is fully functional."
 ## frontend:
 ##   - task: "Phase 0-1: App shell (tabs + projects UI + i18n)"
-##     implemented: false
+##     implemented: true
 ##     working: "NA"
 ##     file: "/app/frontend/app/*"
 ##     stuck_count: 0
 ##     priority: "high"
-##     needs_retesting: false
+##     needs_retesting: true
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
-##         comment: "Not implemented yet."
+##         comment: "Implemented expo-router navigation: Projects list, Create Project form, selected project persisted, Tabs layout (Dashboard/Audience/Competitors/Creators/Planner/Analytics/Settings), RU+EN i18n with persisted language setting. Needs UI testing."
 ## metadata:
 ##   created_by: "main_agent"
 ##   version: "1.0"
