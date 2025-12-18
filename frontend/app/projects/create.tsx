@@ -17,7 +17,7 @@ export default function CreateProjectScreen() {
   const [orgName, setOrgName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [timezone, setTimezone] = useState("UTC");
-  const [lang, setLang] = useState<"ru" | "en">("ru");
+  const [lang, setLang] = useState("ru");
 
   const canSave = useMemo(() => {
     return orgName.trim().length >= 2 && projectName.trim().length >= 2;
@@ -69,7 +69,11 @@ export default function CreateProjectScreen() {
 
         <View style={{ flex: 1 }} />
 
-        {mutation.error ? <Text style={styles.errorText}>{String((mutation.error as Error).message)}</Text> : null}
+        {mutation.error ? (
+          <Text style={styles.errorText}>
+            {mutation.error instanceof Error ? mutation.error.message : String(mutation.error)}
+          </Text>
+        ) : null}
 
         <View style={styles.actions}>
           <Button

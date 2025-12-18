@@ -4,10 +4,10 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "../../src/theme/colors";
 
-type IconProps = { color: string; size: number };
-
-const tabIcon = (name: React.ComponentProps<typeof Ionicons>["name"]) =>
-  ({ color, size }: IconProps) => <Ionicons name={name} size={size} color={color} />;
+const tabIcon = (name: any) => (props: any) => {
+  const { color, size } = props;
+  return <Ionicons name={name} size={size} color={color} />;
+};
 
 export default function TabsLayout() {
   const { t } = useTranslation();
