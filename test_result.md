@@ -174,6 +174,17 @@
 ##       - working: true
 ##         agent: "testing"
 ##         comment: "✅ MODULE A AUDIENCE AVATAR UI TESTS PASSED: Comprehensive mobile testing on iPhone 13 dimensions (390x844) completed successfully. All key functionality verified: 1) Audience tab navigation working, 2) 'Аватары аудитории' title displays correctly, 3) Avatar list shows existing avatars with proper cards (name, geolocation, hashtag chips), 4) 'Создать аватар' button functional, 5) Create form has all required fields (name, hashtags with + button, geolocation with icon, notes textarea), 6) Avatar details screen shows name, geolocation with icon, hashtags as tags, interests section, demographics placeholder, 7) Navigation between list and details working, 8) All UI elements render correctly on mobile. Backend integration working properly. No critical issues found."
+##   - task: "Billing/Payment System UI"
+##     implemented: true
+##     working: "NA"
+##     file: "/app/frontend/app/billing/*, /app/frontend/app/(tabs)/settings.tsx"
+##     stuck_count: 0
+##     priority: "high"
+##     needs_retesting: true
+##     status_history:
+##       - working: "NA"
+##         agent: "main"
+##         comment: "Implemented complete billing/payment UI system: Settings tab with billing card, Plans screen showing 3 plans (Basic $50, Pro $100 'Популярный', Agency $250), Payment method selection (Crypto, Bank, PayPal), individual payment screens with network/token selection for crypto, bank details with copy buttons, PayPal integration. Store: billingStore.ts, API client: billing.ts. Translations added for RU/EN. Needs comprehensive UI testing."
 ## metadata:
 ##   created_by: "main_agent"
 ##   version: "1.0"
