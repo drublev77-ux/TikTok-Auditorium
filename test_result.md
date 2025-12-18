@@ -120,15 +120,18 @@
 ## frontend:
 ##   - task: "Phase 0-1: App shell (tabs + projects UI + i18n)"
 ##     implemented: true
-##     working: "NA"
+##     working: true
 ##     file: "/app/frontend/app/*"
 ##     stuck_count: 0
 ##     priority: "high"
-##     needs_retesting: true
+##     needs_retesting: false
 ##     status_history:
 ##       - working: "NA"
 ##         agent: "main"
 ##         comment: "Implemented expo-router navigation: Projects list, Create Project form, selected project persisted, Tabs layout (Dashboard/Audience/Competitors/Creators/Planner/Analytics/Settings), RU+EN i18n with persisted language setting. Needs UI testing."
+##       - working: true
+##         agent: "testing"
+##         comment: "✅ MOBILE UI TESTS PASSED: Comprehensive testing on iPhone 13 dimensions (390x844). Projects screen loads correctly with existing projects displayed. Create project flow works - navigation, form filling (org name, project name, timezone), language toggle (RU/EN), and save functionality all operational. Project creation successful and projects appear in list. Tab navigation functional (Dashboard, Settings, etc.). Language switching in Settings tab works correctly with UI text updating. Dashboard Projects button successfully returns to projects list. All core mobile UI functionality working as expected. Minor: Multiple 'EN' elements cause selector conflicts but doesn't affect functionality."
 ## metadata:
 ##   created_by: "main_agent"
 ##   version: "1.0"
