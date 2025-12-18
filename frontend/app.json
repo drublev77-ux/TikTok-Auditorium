@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "TikTok Auditorium",
+    "slug": "tiktok-auditorium",
+    "owner": "dennyx",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
