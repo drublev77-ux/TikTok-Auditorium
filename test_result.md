@@ -148,3 +148,7 @@
 ##     message: "Please test backend endpoints via curl: /api/health, create/list org, create/list/get project, manual import with items and csv_base64. Ensure ObjectId handling and CSV parsing errors are clear."
 ##   - agent: "testing"
 ##     message: "✅ BACKEND TESTING COMPLETE: All Phase 0-1 endpoints are working perfectly. Created comprehensive test suite (/app/backend_test.py) and verified all functionality with both Python requests and curl commands. Health endpoint operational, CRUD operations for orgs/projects working, manual imports with items array and CSV parsing functional, error handling robust. Backend is ready for production. No issues found."
+##   - agent: "main"
+##     message: "Re-run UI tests now that web preview loads. Mobile dims: iPhone 13 390x844. Test: 1) / loads Projects screen 2) Click 'Создать проект' -> create screen 3) Fill form, switch to EN, save 4) Verify project in list 5) Tap project -> Tabs dashboard 6) Settings tab language toggle RU/EN 7) Dashboard Projects button return."
+##   - agent: "testing"
+##     message: "✅ MOBILE UI TESTING COMPLETE: All requested tests passed successfully on iPhone 13 dimensions. Projects screen loads with existing projects, create project flow fully functional (form filling, language selection, save), new projects appear in list, tab navigation works, language switching operational in Settings with UI updates, Dashboard Projects button returns to projects list. Core mobile functionality working perfectly. Ready for production use."
