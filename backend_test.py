@@ -860,6 +860,356 @@ def test_subscription_retrieval(results: TestResults):
     except Exception as e:
         results.log_fail("Subscription Retrieval", f"Request failed: {str(e)}")
 
+# ─── MODULE B: COMPETITORS TESTS ──────────────────────────────────────────────
+
+def test_competitors_crud(results: TestResults):
+    """Test Module B: Competitors CRUD operations"""
+    project_id = results.test_data.get("project_id")
+    if not project_id:
+        results.log_fail("Competitors CRUD", "No project_id available")
+        return
+        
+    competitor_id = None
+    
+    try:
+        # Test 1: POST /api/competitors - Create competitor
+        competitor_data = {
+            "project_id": project_id,
+            "name": "TikTok Fitness Guru",
+            "tiktok_url": "https://www.tiktok.com/@fitnessguru123",
+            "notes": "Popular fitness content creator with high engagement"
+        }
+        
+        response = requests.post(f"{BASE_URL}/competitors", json=competitor_data, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Create Competitor", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        competitor = response.json()
+        competitor_id = competitor["id"]
+        results.test_data["competitor_id"] = competitor_id
+        
+        # Verify required fields
+        required_fields = ["id", "project_id", "name", "tiktok_url", "notes", "created_at", "updated_at"]
+        missing_fields = [field for field in required_fields if field not in competitor]
+        
+        if not missing_fields and competitor["name"] == competitor_data["name"]:
+            results.log_pass("Create Competitor")
+            print(f"   Created competitor: {competitor['name']} (ID: {competitor_id})")
+        else:
+            results.log_fail("Create Competitor", f"Missing fields: {missing_fields}")
+            return
+            
+        # Test 2: GET /api/competitors?project_id=X - List competitors
+        response = requests.get(f"{BASE_URL}/competitors", params={"project_id": project_id}, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("List Competitors", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        competitors = response.json()
+        
+        if isinstance(competitors, list) and len(competitors) >= 1:
+            found_competitor = any(c["id"] == competitor_id for c in competitors)
+            if found_competitor:
+                results.log_pass("List Competitors")
+                print(f"   Found {len(competitors)} competitor(s) for project")
+            else:
+                results.log_fail("List Competitors", "Created competitor not found in list")
+        else:
+            results.log_fail("List Competitors", f"Expected list with >= 1 item, got: {type(competitors)}")
+            
+        # Test 3: GET /api/competitors/:id - Get single competitor
+        response = requests.get(f"{BASE_URL}/competitors/{competitor_id}", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Get Single Competitor", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            single_competitor = response.json()
+            if single_competitor["id"] == competitor_id and single_competitor["name"] == "TikTok Fitness Guru":
+                results.log_pass("Get Single Competitor")
+                print(f"   Retrieved competitor: {single_competitor['name']}")
+            else:
+                results.log_fail("Get Single Competitor", "Competitor data mismatch")
+                
+        # Test 4: PATCH /api/competitors/:id - Update competitor
+        update_data = {
+            "name": "Updated Fitness Guru",
+            "notes": "Updated notes about this competitor"
+        }
+        
+        response = requests.patch(f"{BASE_URL}/competitors/{competitor_id}", json=update_data, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Update Competitor", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            updated_competitor = response.json()
+            if (updated_competitor["name"] == "Updated Fitness Guru" and 
+                updated_competitor["notes"] == "Updated notes about this competitor"):
+                results.log_pass("Update Competitor")
+                print(f"   Updated competitor: {updated_competitor['name']}")
+            else:
+                results.log_fail("Update Competitor", "Update data not reflected correctly")
+                
+        # Test 5: DELETE /api/competitors/:id - Delete competitor
+        response = requests.delete(f"{BASE_URL}/competitors/{competitor_id}", timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Delete Competitor", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            delete_result = response.json()
+            if delete_result.get("status") == "deleted":
+                results.log_pass("Delete Competitor")
+                print(f"   Deleted competitor with ID: {competitor_id}")
+            else:
+                results.log_fail("Delete Competitor", f"Unexpected response: {delete_result}")
+                
+    except Exception as e:
+        results.log_fail("Competitors CRUD", f"Request failed: {str(e)}")
+
+def test_competitors_errors(results: TestResults):
+    """Test Competitors API error scenarios"""
+    try:
+        # Test 1: Invalid project_id
+        response = requests.get(f"{BASE_URL}/competitors", params={"project_id": "invalid_id"}, timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Competitors Error - Invalid Project ID")
+            print("   Correctly returned 400 for invalid project_id")
+        else:
+            results.log_fail("Competitors Error - Invalid Project ID", f"Expected 400, got {response.status_code}")
+            
+        # Test 2: Missing required fields
+        invalid_data = {"project_id": "507f1f77bcf86cd799439011"}  # Missing name and tiktok_url
+        response = requests.post(f"{BASE_URL}/competitors", json=invalid_data, timeout=10)
+        
+        if response.status_code == 422:
+            results.log_pass("Competitors Error - Missing Fields")
+            print("   Correctly returned 422 for missing required fields")
+        else:
+            results.log_fail("Competitors Error - Missing Fields", f"Expected 422, got {response.status_code}")
+            
+        # Test 3: Get non-existent competitor
+        fake_id = "507f1f77bcf86cd799439011"
+        response = requests.get(f"{BASE_URL}/competitors/{fake_id}", timeout=10)
+        
+        if response.status_code == 404:
+            results.log_pass("Competitors Error - Get Non-existent")
+            print("   Correctly returned 404 for non-existent competitor")
+        else:
+            results.log_fail("Competitors Error - Get Non-existent", f"Expected 404, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Competitors Error Tests", f"Request failed: {str(e)}")
+
+# ─── MODULE C: CREATORS TESTS ─────────────────────────────────────────────────
+
+def test_creators_crud(results: TestResults):
+    """Test Module C: Creators CRUD operations with categories"""
+    project_id = results.test_data.get("project_id")
+    if not project_id:
+        results.log_fail("Creators CRUD", "No project_id available")
+        return
+        
+    creator_ids = []
+    
+    try:
+        # Test 1: POST /api/creators - Create creator with category "fitness"
+        fitness_creator_data = {
+            "project_id": project_id,
+            "name": "Fitness Blogger Sarah",
+            "tiktok_url": "https://www.tiktok.com/@sarahfitness",
+            "category": "fitness",
+            "notes": "Popular fitness blogger with workout routines"
+        }
+        
+        response = requests.post(f"{BASE_URL}/creators", json=fitness_creator_data, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Create Fitness Creator", f"Expected 200, got {response.status_code}: {response.text}")
+            return
+            
+        fitness_creator = response.json()
+        creator_ids.append(fitness_creator["id"])
+        results.test_data["fitness_creator_id"] = fitness_creator["id"]
+        
+        # Verify required fields
+        required_fields = ["id", "project_id", "name", "tiktok_url", "category", "notes", "created_at", "updated_at"]
+        missing_fields = [field for field in required_fields if field not in fitness_creator]
+        
+        if not missing_fields and fitness_creator["category"] == "fitness":
+            results.log_pass("Create Fitness Creator")
+            print(f"   Created fitness creator: {fitness_creator['name']} (Category: {fitness_creator['category']})")
+        else:
+            results.log_fail("Create Fitness Creator", f"Missing fields: {missing_fields}")
+            
+        # Test 2: POST /api/creators - Create another creator with category "beauty"
+        beauty_creator_data = {
+            "project_id": project_id,
+            "name": "Beauty Guru Emma",
+            "tiktok_url": "https://www.tiktok.com/@emmabeauty",
+            "category": "beauty",
+            "notes": "Makeup tutorials and beauty tips"
+        }
+        
+        response = requests.post(f"{BASE_URL}/creators", json=beauty_creator_data, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Create Beauty Creator", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            beauty_creator = response.json()
+            creator_ids.append(beauty_creator["id"])
+            results.test_data["beauty_creator_id"] = beauty_creator["id"]
+            
+            if beauty_creator["category"] == "beauty":
+                results.log_pass("Create Beauty Creator")
+                print(f"   Created beauty creator: {beauty_creator['name']} (Category: {beauty_creator['category']})")
+            else:
+                results.log_fail("Create Beauty Creator", f"Category mismatch: expected 'beauty', got '{beauty_creator['category']}'")
+                
+        # Test 3: GET /api/creators?project_id=X - List all creators
+        response = requests.get(f"{BASE_URL}/creators", params={"project_id": project_id}, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("List All Creators", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            creators = response.json()
+            if isinstance(creators, list) and len(creators) >= 2:
+                categories = [creator["category"] for creator in creators]
+                if "fitness" in categories and "beauty" in categories:
+                    results.log_pass("List All Creators")
+                    print(f"   Found {len(creators)} creators with categories: {set(categories)}")
+                else:
+                    results.log_fail("List All Creators", f"Missing expected categories. Found: {categories}")
+            else:
+                results.log_fail("List All Creators", f"Expected list with >= 2 items, got: {len(creators) if isinstance(creators, list) else 'not a list'}")
+                
+        # Test 4: GET /api/creators?project_id=X&category=fitness - Filter by category
+        response = requests.get(f"{BASE_URL}/creators", params={"project_id": project_id, "category": "fitness"}, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Filter Creators by Fitness", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            fitness_creators = response.json()
+            if isinstance(fitness_creators, list) and len(fitness_creators) == 1 and fitness_creators[0]["category"] == "fitness":
+                results.log_pass("Filter Creators by Fitness")
+                print(f"   Found 1 fitness creator: {fitness_creators[0]['name']}")
+            else:
+                results.log_fail("Filter Creators by Fitness", f"Expected 1 fitness creator, got: {len(fitness_creators) if isinstance(fitness_creators, list) else 'not a list'}")
+                
+        # Test 5: GET /api/creators/categories/list?project_id=X - Get categories list
+        response = requests.get(f"{BASE_URL}/creators/categories/list", params={"project_id": project_id}, timeout=10)
+        
+        if response.status_code != 200:
+            results.log_fail("Get Creator Categories", f"Expected 200, got {response.status_code}: {response.text}")
+        else:
+            categories = response.json()
+            if isinstance(categories, list) and "fitness" in categories and "beauty" in categories:
+                results.log_pass("Get Creator Categories")
+                print(f"   Found categories: {sorted(categories)}")
+            else:
+                results.log_fail("Get Creator Categories", f"Missing expected categories. Got: {categories}")
+                
+        # Test 6: GET /api/creators/:id - Get single creator
+        if creator_ids:
+            response = requests.get(f"{BASE_URL}/creators/{creator_ids[0]}", timeout=10)
+            
+            if response.status_code != 200:
+                results.log_fail("Get Single Creator", f"Expected 200, got {response.status_code}: {response.text}")
+            else:
+                single_creator = response.json()
+                if single_creator["id"] == creator_ids[0] and single_creator["name"] == "Fitness Blogger Sarah":
+                    results.log_pass("Get Single Creator")
+                    print(f"   Retrieved creator: {single_creator['name']}")
+                else:
+                    results.log_fail("Get Single Creator", "Creator data mismatch")
+                    
+        # Test 7: PATCH /api/creators/:id - Update creator
+        if creator_ids:
+            update_data = {
+                "name": "Updated Fitness Sarah",
+                "category": "health",
+                "notes": "Updated notes about health and fitness"
+            }
+            
+            response = requests.patch(f"{BASE_URL}/creators/{creator_ids[0]}", json=update_data, timeout=10)
+            
+            if response.status_code != 200:
+                results.log_fail("Update Creator", f"Expected 200, got {response.status_code}: {response.text}")
+            else:
+                updated_creator = response.json()
+                if (updated_creator["name"] == "Updated Fitness Sarah" and 
+                    updated_creator["category"] == "health" and 
+                    updated_creator["notes"] == "Updated notes about health and fitness"):
+                    results.log_pass("Update Creator")
+                    print(f"   Updated creator: {updated_creator['name']} (Category: {updated_creator['category']})")
+                else:
+                    results.log_fail("Update Creator", "Update data not reflected correctly")
+                    
+        # Test 8: DELETE /api/creators/:id - Delete creators
+        for i, creator_id in enumerate(creator_ids):
+            response = requests.delete(f"{BASE_URL}/creators/{creator_id}", timeout=10)
+            
+            if response.status_code != 200:
+                results.log_fail(f"Delete Creator {i+1}", f"Expected 200, got {response.status_code}: {response.text}")
+            else:
+                delete_result = response.json()
+                if delete_result.get("status") == "deleted":
+                    results.log_pass(f"Delete Creator {i+1}")
+                    print(f"   Deleted creator with ID: {creator_id}")
+                else:
+                    results.log_fail(f"Delete Creator {i+1}", f"Unexpected response: {delete_result}")
+                    
+    except Exception as e:
+        results.log_fail("Creators CRUD", f"Request failed: {str(e)}")
+
+def test_creators_errors(results: TestResults):
+    """Test Creators API error scenarios"""
+    project_id = results.test_data.get("project_id")
+    
+    try:
+        # Test 1: Invalid creator_id
+        response = requests.get(f"{BASE_URL}/creators/invalid_id", timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Creators Error - Invalid Creator ID")
+            print("   Correctly returned 400 for invalid creator_id")
+        else:
+            results.log_fail("Creators Error - Invalid Creator ID", f"Expected 400, got {response.status_code}")
+            
+        # Test 2: Missing required fields
+        invalid_data = {"project_id": project_id}  # Missing name and tiktok_url
+        response = requests.post(f"{BASE_URL}/creators", json=invalid_data, timeout=10)
+        
+        if response.status_code == 422:
+            results.log_pass("Creators Error - Missing Fields")
+            print("   Correctly returned 422 for missing required fields")
+        else:
+            results.log_fail("Creators Error - Missing Fields", f"Expected 422, got {response.status_code}")
+            
+        # Test 3: Get non-existent creator
+        fake_id = "507f1f77bcf86cd799439011"
+        response = requests.get(f"{BASE_URL}/creators/{fake_id}", timeout=10)
+        
+        if response.status_code == 404:
+            results.log_pass("Creators Error - Get Non-existent")
+            print("   Correctly returned 404 for non-existent creator")
+        else:
+            results.log_fail("Creators Error - Get Non-existent", f"Expected 404, got {response.status_code}")
+            
+        # Test 4: Invalid project_id for categories
+        response = requests.get(f"{BASE_URL}/creators/categories/list", params={"project_id": "invalid_id"}, timeout=10)
+        
+        if response.status_code == 400:
+            results.log_pass("Creators Error - Invalid Project ID for Categories")
+            print("   Correctly returned 400 for invalid project_id in categories endpoint")
+        else:
+            results.log_fail("Creators Error - Invalid Project ID for Categories", f"Expected 400, got {response.status_code}")
+            
+    except Exception as e:
+        results.log_fail("Creators Error Tests", f"Request failed: {str(e)}")
+
 def main():
     """Run all backend tests including Avatar API and Billing/Payment tests"""
     print(f"🚀 Starting TikTok Auditorium Backend Tests (Phase 0-1 + Module A + Billing)")
