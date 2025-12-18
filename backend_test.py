@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Use the production URL from frontend/.env
-BASE_URL = "https://tikauditor.preview.emergentagent.com/api"
+BASE_URL = "https://tikaudit.preview.emergentagent.com/api"
 
 class TestResults:
     def __init__(self):
